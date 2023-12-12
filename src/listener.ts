@@ -1,5 +1,6 @@
-import nats, { Message } from "node-nats-streaming";
+import nats from "node-nats-streaming";
 import { randomBytes } from "crypto";
+import { TicketCreatedListener } from "./events/ticket-created-listner";
 console.clear();
 const client = nats.connect("ticketing", randomBytes(4).toString("hex"), {
   url: "http://localhost:4222",
@@ -11,21 +12,7 @@ client.on("connect", () => {
     console.log("closing the listener!!");
     process.exit();
   });
-  const options = client
-    .subscriptionOptions()
-    .setManualAckMode(true)
-    .setDeliverAllAvailable()
-    .setDurableName("accounting-srv");
-
-  const subs = client.subscribe("ticket:created", "queue-grp-name", options);
-
-  subs.on("message", (msg: Message) => {
-    const data = msg.getData();
-    if (typeof data === "string") {
-      console.log(`Received event #${msg.getSequence()},with data : ${data}`);
-    }
-    msg.ack();
-  });
+  new TicketCreatedListener(client).listen();
 });
 
 process.on("SIGINT", () => {
